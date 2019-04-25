@@ -46,3 +46,73 @@ httpd = make_server('', 80, hello_world, ThreadedWSGIServer)
 httpd.serve_forever()
 
 ###################################################################################
+
+'''
+2. POST 메서드 처리
+우리 서버는 GET 메서드만 지원 -> POST 메서드 추가 구현
+서버의 상세 제어를 맡고 있는 핸들러에서 구현
+(기본적으로 파이썬 서버는 핸들러를 하나씩 가지고 있고, 각 핸들러에 따라 동작 방식 변화)
+핸들러는 기본 WSGI 핸들러인 WSGIRequestHandler를 상속받아 만들고,
+하위 메서드를 오버라이드 하여 동작을 변경
+핸들러를 maker_server의 파라미터로 넘기면 서버에 마운트 되어 작동
+
+WSGIRequestHandler의 get_environ 메서드는 client의 요청정보를 리턴
+이 메서드를 재정의하여 GET과 POST의 분기 처리를 넣으면 되고,
+이렇게 만들어진 요청정보는 hello_world의 environ 파라미터로 전달받게 된다.
+'''
+from wsgiref.simple_server import make_server, WSGIServer
+class SimpleRequestHandler(WSGIRequestHandler):
+    def get_environ(self):
+        ...
+
+httpd = make_server('', 80, hello_world, ThreadedWSGIServer)
+httpd.serve_forever()
+
+###################################################################################
+
+import json, urllib.parse
+
+encoding = 'utf-8'
+
+class SimpleRequestHandler(WSGIRequestHandler):
+    '''
+    부모 클래스의 원본 메서드를 호출하여 요청정보를 받아온다.
+    GET/POST에 따라 각각 요청 파라미터를 정제
+    기존 요청정보에 request_payload를 키로 데이터를 삽입
+    GET/POST 구분은 핸들러의 command 변수에 저장되어 들어온다.
+    
+    HTTP  스펙에 따라
+        GET : 요청 파라미터가 URL에 포함되어 쿼리 스트링 형태로 들어온다.
+            (QUERY_STRING 값을 뽑아 구분자(&, =)로 분리해 내면 간단)
+            
+            parameters의 이름으로 요청 파라미터를 넘겼을 경우,
+            client가 JSON형태로 인코딩 하여 전송했다는 가정하게 JSON으로 파싱하여 저장
+
+        POST : 요청 파라미터가 요청 본문에 포함되어 들어온다.
+            WSGIRequestHandler에서는 아래와 같이 처리하여 값을 얻어올 수 있다.
+
+            length = int(self.headers.get('content-length'))
+            json.loads(urllib.parse.unquote(self.rfile.read(length).decode('utf-8)))
+    '''
+    def get_environ(self):
+        environ = super(SimpleRequestHandler, self).get_environ()
+        request_payload = {}
+
+        if self.command == 'GET':
+            for item in environ.get('QUERY_STRING').split('&'):
+                if item:
+                    request_payload[item.split('=')[0]] == item.split('=')[1]
+
+            if 'parameters' in request_payload:
+                request_payload = json.loads(urllib.parse.unquote(request_payload['parameters']))
+        
+        elif self.command == 'POST':
+            length = int(self.headers.get('content-length'))
+
+            if length > 0:
+                request_payload = json.loads(urllib.parse.unquote(self.rfile.read(length).decode(encoding)))
+
+        environ['REQUEST_PAYLOAD'] = request_payload
+
+        return environ
+
