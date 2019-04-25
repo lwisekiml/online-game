@@ -25,3 +25,24 @@ def hello_world(environ, start_respons):
 
 httpd = make_server('', 80, hello_world, ThreadedWSGIServer)
 httpd.serve_forever()
+
+###################################################################################
+
+'''
+1. 멀티 쓰레드 지원
+WSGI는 싱글 쓰레드만 지원 -> 멀티 쓰레드 지원으로 동작하도록
+ThreadingMixln을 WSGIServer와 함께 상속한 새로운 서버 클래스 제작
+'''
+from wsgiref.simple_server import make_server, WSGIServer
+from socketserver import ThreadingMixIn
+
+def hello_world(environ, start_respons):
+    start_response('200 OK', [('Content-Type', 'text/json;charset=utf-8')])
+
+class ThreadedWSGIServer(ThreadingMixIn, WSGIServer):
+    pass
+
+httpd = make_server('', 80, hello_world, ThreadedWSGIServer)
+httpd.serve_forever()
+
+###################################################################################
