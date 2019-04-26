@@ -1,7 +1,7 @@
 # online-game
-simple_http.py
-    CGI
-    WSGI
-    MultiThread
-    POST / GET method
-    Logging
+### simple_httpd.py
+  * CGI
+  * WSGI
+  * MultiThread
+  * POST / GET method
+  * Logging
