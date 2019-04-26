@@ -116,3 +116,25 @@ class SimpleRequestHandler(WSGIRequestHandler):
 
         return environ
 
+###################################################################################
+'''
+로깅 기능
+기존 WSGIServer에서 콘솔로 내보내는 로그 문자열을 내가 원하는 형식으로 바꿔 파일로 출력하도록 변경
+핸들러의 log_message 메서드를 재정의
+'''
+log_file = open('log/simple.log', 'a')
+
+class SimpleRequestHandler(WSGIRequestHandler):
+    def get_environ(self):
+        ...
+    def log_message(self, format, *args):
+        log_file.write('%s -- [%s] %s\n' % (self.address_string(), self.log_data_time_string(), format%args))
+
+try:
+    httpd = make_server('', 80, hello_world, ThreadedWSGIServer, SimpleRequestHandler)
+    print('Starting simple_httpd on port' + str(httpd.server_port))
+    httpd.serve_forever()
+except KeyboardInterrupt:
+    print('Shutting down simple_httpd')
+    log_file.close()
+    httpd.socket.close()
