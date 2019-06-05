@@ -145,3 +145,37 @@ clinet가 들어왔을 때와 나갔을 때를 처리해 줄 in_clinet와 out_cl
 TCPServer에서 각 clinet 별로 핸들러 인스터스를 새로 생성하여 처리하기 때문에 client를 식별하는데 핸들러를 사용하였다.
 receive_message 메서드는 client와 연계된 비즈니스 로직이 들어간다.
 '''
+
+###########################################################################################
+
+# WebsocketRequestHandler 클래스 구현
+from socketserver import BaseRequestHandler
+
+class WebsocketRequestHandler(BaseRequestHandler):
+    #Override
+    def setup(self):
+        self.socket = self.request
+        self.is_valid = True
+        self.is_handshake = False
+
+    #Override
+    def handle(self):
+        while self.is_valid:
+            if not self.is_handshake:
+                self.handshake()
+            else:
+                self.receive_message()
+
+    #Override
+    def finish(self):
+        self.server.out_client(self)
+'''
+BaseRequestHandler를 상속받아 WebsocketRequestHandler를 만들고, 메서드 3가지를 재정의한다.
+setUp 메서드는 handle 메서드에 들어서기 앞서 처리해야 할 로직을 담는 메서드
+(BaseRequestHandler가 가지고 있는 request(socket 객체)멤버 변수를 이해하기 쉽도록 socket이라는 이름으로 변경,
+현재 client의 유효성 체크 용도인 is_valid와 핸드쉐이크가 이루어졌는지 확인하기 위한 is_handshake를 선언)
+handle 메서드는 우리 서버의 본격적인 로직이 들어가는 부분이다.
+여기서는 client가 처음 진입할 경우 핸드쉐이크를 하고 결과가 유효한 경우 client가 보내는 메시지를 받을 준비를 하게 된다.
+마지막으로 finish메서드는 clinet의 연결이 끊어지는 시점에서 호출되므로 필요한 처리를 해주면 된다.
+'''
+
