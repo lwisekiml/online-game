@@ -23,7 +23,7 @@ Upgrade: websocket
 Connections: Upgrade
 Sec-Websocket-Key: (임의의 키 값)
 
-웹 소켓 연결인지 알기 위한 Upgrade와 서버와 핸드쉐이크를 하기위한 키 값인 Sec-Websocket-Key입니다.
+중요한 부분은 웹 소켓 연결인지 알기 위한 Upgrade, 서버와 핸드쉐이크를 하기위한 키 값인 Sec-Websocket-Key입니다.
 클라이언트가 건넨 키를 서버가 읽어 매직넘버(웹 소켓 스펙에서 그냥 정해져 있는) 인
 258EAFA5-E914-47DA-95CA-C5AB0DC85B11를 붙여 sha1으로 해싱한 후
 base64로 인코딩 하여 만들어낸 키 값을 다시 클라이언트로 보내고,
@@ -33,6 +33,10 @@ HTTP/1.1 101 Switching Protocols
 Upgrade: websocket
 Connections: Upgrade
 Sec-Websocket-Accept: (매직넘버를 붙여 sha1으로 해싱하고 base64로 인코딩한 키 값)
+
+그 이후로는 소켓을 통하여 데이터를 송수신하면 되는데,
+이 때 주고받는 메시지를 웹 소켓 프레임이라고 한다.
+이 역시 정해진 프레임 구조를 다른다.
 
 0               1               2               3              
  0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
