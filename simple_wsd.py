@@ -86,3 +86,62 @@ except KeyboardInterrupt:
 # 앞으로 WebsocketServer와 WebsocketRequestHandler의 내용을 채우면 된다.
 # WebsocketServer의 host파라미터 자리의 0.0.0.0은 client가 어떤 IP로 들어오면 다 받겠다는 의미
 
+###########################################################################################
+
+# WebsocketServer 구현
+from socketserver import ThreadingMixIn, TCPServer
+
+class WebsocketServer(ThreadingMixIn, TCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+    client_id = 0
+    clients = []
+    all_data = {}
+
+    def __init__(self, host, port, handlerClass):
+        TCPServer.__init__(self, (host, port), handlerClass)
+
+    def find_client(self, handler):
+        for client in self.clients:
+            if client['handler'] == handler:
+                return client
+
+    def in_client(self, handler):
+        self.client_id += 1
+        self.clients.append({'id':str(self.client_id), 'handler':handler})
+        print('In client' + str(self.client_id))
+
+    def out_client(self, handler):
+        for client in self.clients:
+            if client['handler'] == handler:
+                self.clients.remove(client)
+                del self.all_data[client['id']]
+                handler.send_message(json.dumps({'code':0, 'message':'success'}))
+                print('Out client' + client['id'])
+                break
+
+    def receive_message(self, handler, message):
+        pass
+'''
+멀티쓰레드의 TCP통신을 하는 서버를 만들어야 하기 때문에
+ThreadingMixIn, TCPServer 두 클래스를 상속받아 WebsocketServer클래스를 생성
+
+allow_reuse_address는 TCPServer의 속성으로, 일반적으로 clinet가 접속 중에 서버를 재시작했다면 다시 서버가 시작되고
+재접속할 때 이미 사용 중이라는 오류를 반환하게 된다.
+allow_reuse_address를 True로 설정하게 되면 사용 중인 소켓이라도 재사용함으로써 오류 없이 진행할 수 있다.
+수시로 서버를 재시작해야 하는 개발환경에서는 꼭 필요한 설정
+
+daemon_threads는 ThreadingMixIn의 속성으로, 값이 True라면 메인 프로세스가 종료되어도 데몬 쓰레드는
+계속 실행하게 해준다. 서버가 종료되어도 현재 작업 중이던 쓰레드는 종료되지 않고 정상적으로 작업을 마무리 하게 된다.
+
+client_id는 각 client에게 식별 값으로 주어지는 시퀀스로 사용하려고 넣은 커스텀 속성(작성자 본인이)
+client는 현재 접속 중인 client의 리스트이다. 역시 커스텀 속성이다.
+client에 들어갈 client의 형식으로 {id : (clinet_id), handler : (handler object)} 이다.
+all_data는 clinet들의 데이터를 가지고 있는 커스텀 속성이다.
+
+생성자는 TCPServer의 생성자에 맞춰 호출해주면 되고,
+clinet가 들어왔을 때와 나갔을 때를 처리해 줄 in_clinet와 out_clinet 그리고 이를 보조하기 위한 find_clinet 메서드를 구성하였다.
+TCPServer에서 각 clinet 별로 핸들러 인스터스를 새로 생성하여 처리하기 때문에 client를 식별하는데 핸들러를 사용하였다.
+receive_message 메서드는 client와 연계된 비즈니스 로직이 들어간다.
+'''
