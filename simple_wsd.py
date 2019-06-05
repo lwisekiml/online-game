@@ -274,3 +274,41 @@ Payload len이 125 이하 라면 그 자체로 본문 데이터의 길이를 나
 그리고 Payload Data의 각 바이트에 Masking-key를 순차적으로 XOR 연산하여 실제 데이터 값을 추출한다.
 그리고는 이 값을 서버의 비즈니스 로직을 처리하는 server.receive_message메서드로 보내면서 마무리되었다.
 '''
+
+###########################################################################################
+
+# clinet에게 data를 전송하는 method
+class WebsocketRequestHandler(BaseRequestHandler):
+    def send_message(self, message):
+        header = bytearray()
+        payload = message.encode('UTF-8')
+        payload_length = len(payload)
+
+        header.append(129)
+
+        if payload_length <= 125:
+            header.append(payload_length)
+        elif payload_length >= 126 and payload_length <= pow(2, 16):
+            header.append(126)
+            header.extend(struct.pack('>H', payload_length))
+        elif payload_length <= pow(2, 64):
+            header.append(127)
+            header.extend(struct.pack('>Q', payload_length))
+        else:
+            print('Not valid send payload_length')
+            return
+
+        self.socket.send(header + payload)
+
+'''
+보내는 것 역시 받는 것과 별반 다르지 않다.
+처음 1byte는 FIN을 1로 opcode도 1로, 즉 129로 설정한다.
+opcode 1은 전송할 데이터가 UTF-8로 인코딩 된 TEXT 임을 의미한다.
+그 후 데이터의 길이가 125면 그대로,
+126이면 뒤 2byte를 통해,
+127이면 뒤 4byte를 통행 데이터 길이를 보내준다.
+받았던 것 과는 반대로 struct.pack을 이용하여 int값을 byte값으로 변경한다.
+header와 본문 데이터를 붙여 전송하면 끝이다.
+(서버가 보낼때는 마스킹은 하지 않는다.)
+'''
+
