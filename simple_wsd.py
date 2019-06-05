@@ -220,3 +220,57 @@ UTF-8(디폴트)로 디코딩 하면 앞에서 살펴보았던 요청정보 문�
 이 키값을 응답 헤더 형식에 맞춰 소켓으로 전송하면 핸드쉐이크가 완료된다.
 '''
 
+###########################################################################################
+
+# 핸드쉐이크 완료 후 client로 부터 데이터를 받는 메서드
+class WebsocketRequestHandler(BaseRequestHandler):
+    def receive_message(self):
+        byte1, byte2 = self.socket.recv(2)
+
+        opcode = byte1 & 15
+        is_mask = byte2 & 128
+        payload_length = byte2 & 127
+
+        if not byte1 or opcode == 8 or not is_mask:
+            self.is_valid = False
+            return
+
+        if payload_length == 126:
+            payload_length = struct.unpack('>H', self.socket.recv(2))[0]
+        elif payload_length == 127:
+            payload_length = struct.unpack('>Q', self.socket.recv(4))[0]
+
+        masks = self.socket.recv(4)
+        payload = self.socket.recv(payload_length)
+        message = ''
+
+        for byte in payload:
+            byte ^= masks[len(message) % 4]
+            message += chr(byte)
+
+        self.server.receive_message(self, message)
+
+'''
+정해져있는 형식대로 데이터를 주고받아야 한다.
+
+먼저 최초 2byte만큼 데이터를 읽어 필요한 부분을 확인한다.
+각 필요한 부분은 and 비트 연산을 통해 가져올 수 있다.
+opcode를 가져오려면 opcode가 첫 번째 byte의 앞 4비트를 차지하고 있기 때문에
+00001111(15)를 and연산해주면 
+opcode가 아닌 부분을 0,
+opcode인 부분은 opcode의 값에 따라 0 또는 1이 되어 opcode만 정제해 가져올 수 있다.
+이런식으로 opcode, MASK, Payload len 부분을 가져온다.
+
+opcode가 8이라면 이는 client에서 연결 종료를 요청한것이다.
+따라서 is_valid의 값을 False로 변경해 handle 메서드렝서 더이상 루프가 돌지않고 종료되도록 처리한다.
+MASK는 보안을 위해 client는 반드시 처리해줘야 하는것이 웹 소켓 스펙이기 때문에
+MASK가 1이 아니면 이 또한 유효하지 않은 처리를 하도록 하겠다.
+Payload len이 125 이하 라면 그 자체로 본문 데이터의 길이를 나타내고,
+126이라면 뒤 2바이트에, 127이라면 뒤 4바이트를 통행 본문 데이터의 길이를 표현하도록 되어있다.
+따라서 Payload len을 읽어 그 값이 1266이라면 다음 2바이트를 읽어 struct.unpack으로 바이트를 int로 바꿔주는데,
+여기서 >H는 2바이트 int형을 나타낸다. 127일 경우 동일하지만 >Q로 4바이트 int 형으로 변경한다.
+
+그 다음은 Masking-key 4byte를 읽고, 앞에서 계산한 본문 데이터의 길이 만큼 Payload Data(본문 데이터)를 읽는다.
+그리고 Payload Data의 각 바이트에 Masking-key를 순차적으로 XOR 연산하여 실제 데이터 값을 추출한다.
+그리고는 이 값을 서버의 비즈니스 로직을 처리하는 server.receive_message메서드로 보내면서 마무리되었다.
+'''
