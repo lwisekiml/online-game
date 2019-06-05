@@ -32,6 +32,28 @@
     client가 단순히 정적 리소스(html, css, js, jpg, gif 등)를 요청했을 경우,  
     예로 http://simple-online-game/index.html 와 같은 요청도 처리할 수 있어야 한다
 
+
+### simple_wsd.py
+  * Web Socket  
+    웹에서 TCP 소켓 통신을 지원하여, 서버와 한번 연결하고 지속적으로 데이터를 주고받는 HTML5의 명세  
+    -> 웹소켓은 처음 한번 서버와 연결한 후 계속 데이터를 주고 받을 수 있어 빠르다.  
+    
+    * Web Socket으로 하는 server와 client 간의 통신은 두 가지 프로세스  
+      * Handshake : server와 client가 데이터 송수신을 하기에 앞서 준비를 하도록 하는 절차  
+      * data 송수신 : Handshake 후에 소켓을 통하여 데이터 송수신  
+
+  * WebsocketServer  
+    멀티쓰레드의 TCP통신을 하는 서버를 만들어야 하기 때문에  
+    ThreadingMixIn, TCPServer 두 클래스를 상속받아 WebsocketServer클래스를 생성
+    
+  * WebsocketRequestHandler  
+    BaseRequestHandler를 상속받아 WebsocketRequestHandler를 만들고, setup(), handle(), finish() 메서드 재정의
+    
+     * handshake() : 소켓을 통해 client로부터 요청정보를 받아온다.  
+     * receive_message() : handshake 완료 후 client로 부터 데이터를 받는 메서드  
+     * send_message() : clinet에게 data를 전송하는 method
+    
 ------------------------------------------------------------------------------------
+
 파이썬은 __ pycache __ 폴더에 .pyc 파일(또는 .pyo 파일)로 바이트 코드의 사본을 생성한다.  
-프로그램을 조금 더 빨리 시작하는 것뿐이다.
+이것은 프로그램을 조금 더 빨리 시작하는 것뿐이다.
