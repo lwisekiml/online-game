@@ -179,3 +179,44 @@ handle 메서드는 우리 서버의 본격적인 로직이 들어가는 부분�
 마지막으로 finish메서드는 clinet의 연결이 끊어지는 시점에서 호출되므로 필요한 처리를 해주면 된다.
 '''
 
+###########################################################################################
+
+# handshake method
+class WebsocketRequestHandler(BaseRequestHandler):
+    def handshake(self):
+        header = self.socket.recv(1024).decode().strip()
+        request_key = ''
+
+        for each in header.split('\r\n'):
+            if each.find(':') == -1:
+                continue
+            (k, v) = each.split(':')
+            if k.strip().lower() == 'sec-websocket-key':
+                request_key = v.strip()
+                break
+        
+        if not request_key:
+            self.is_valid = False
+            print('Not valid handshake request_key')
+            return
+        
+        response_key = b64encode(sha1(request_key.encode() + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'.encode()).digest()).strip().decode()
+        response=\
+            'HTTP/1.1 101 Switching Protocols\r\n'\
+            'Upgrade: websocket\r\n'\
+            'Connection: Upgrade\r\n'\
+            'Sec-Websocket-Accept: %s\r\n'\
+            '\r\n' % response_key
+        
+        self.is_handshake = self.socket.send(response.encode())
+        self.server.in_client(self)
+        print('Handshake OK!')
+
+'''
+우선 소켓을 통해 client로부터 요청정보를 받아온다.
+UTF-8(디폴트)로 디코딩 하면 앞에서 살펴보았던 요청정보 문자열이 나온다.
+그 형식에 따라 요청 문자열을 잘 분리하여 sec-websocket-key를 얻는다.
+이 키를 sha1으로 해싱한 후 bse64로 인코딩 하면 bytearray가 나오는데 디코딩하면 응답 키 문자열을 얻을 수 있다.
+이 키값을 응답 헤더 형식에 맞춰 소켓으로 전송하면 핸드쉐이크가 완료된다.
+'''
+
