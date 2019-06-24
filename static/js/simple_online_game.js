@@ -26,7 +26,30 @@
 		...
 
 		// 3) Game, Server, Sprite, Painter, Actors, PainterFactory 클래스 정의
-		...
+		/**************** Sprite ****************/
+		Sprite = function($painter, $actors){
+			this.painter = $painter;
+			this.actors = $actors||{};
+			this.data = null;
+			this.left = 0;
+			this.top = 0;
+		}
+
+		Sprite.prototype.paint = function($context){
+			this.painter.paint(this, $context);
+		};
+
+		Sprite.prototype.update = function($data, $time){
+			this.data = $data;
+
+			for(var name in this.actors){
+				this.actors[name].execute(this, $data, $time);
+			}
+		};
+
+		Sprite.prototype.advance = function(){
+			this.painter.advance();
+		};
 
 		// 4) 초기화 및 게임 시작점
 		initialize = function(){
