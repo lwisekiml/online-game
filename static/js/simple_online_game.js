@@ -26,6 +26,92 @@
 		...
 
 		// 3) Game, Server, Sprite, Painter, Actors, PainterFactory 클래스 정의
+		
+		/**************** Server ****************/
+		/*
+			Server는 크게 웹 소켓 서버와 연결하고,
+			데이터를 주고받을 때 흐름을 정의하는 connect 메서드와
+			그 내부에서 상세 처리에 사용되는 
+			data, register,update, exit 메서드가 있다.
+
+			이들이 서버로 보내는 메시구조는
+			[Command::JSON 형식 문자열 파라미터] 이며,
+			Command는 Server의 생성자에 정의되어 있다.
+		*/
+
+		Server = function($params){
+			this.userId = null;
+			this.roomNo = $params.roomNo;
+			this.socket = null;
+			this.command = {REGISTER:'register', UPDATE:'update', DATA:'data'};
+		};
+
+
+		/*
+			WebSocket 서버를 만들고,
+			Server와 연결되었을 경우 발생하는 이벤트 open에서 register 메서드를 호출하여 캐릭터 등록을 진행하고,
+			서버로부터 메시지를 받을 때 발생하는 이벤트 message에서는 서버가 넘겨준 데이터를 뽑아
+				REGISTER 커맨드의 데이터인 경우 Game 객체가 넘겨준 $registerCB 함수에 데이터를 넘겨 호출하고,
+				DATA 커맨드인 경우 $dataCB 함수에 데이터를 넘겨 호출하여 준다.
+			그러면 CB함수에서 게임 진행과 관련된 처리를 하게된다.
+		*/
+		Server.prototype.connect = function($registerCB, $dataCB){
+			var self = this;
+			this.socket = new WebSocket('ws://' + (window.location.hostname || 'localhost') + ':8080');
+			this.socket.addEventListener('open', function(){self.register();});
+			this.socket.addEventListener('message', function($event){
+				var result = JSON.parse($event.data),
+				data = result.data;
+
+				if(result.code === 0){
+					if(result.status === self.command.REGISTER){
+						$registerCB.apply(sog, [data]);
+					}else if(result.status === self.command.DATA){
+						$dataCB.apply(sog, [data, result.time]);
+					}
+				}else{
+					self.exit();
+					alert(data.message);
+				}
+			});
+			this.socket.addEventListener('close', function($event){
+				document.getElementById('exit').style.display = 'none';
+				sog.context.clearRect(0, 0, sog.context.canvas.width, sog.context.canvas.height);
+			});
+		};
+
+		// 서버로부터 데이터를 요청
+		Server.prototype.data = function($time){
+			this.socket.send(this.command.DATA + '::' + JSON.stringify({roomNo:this.roomNo, time:$time}));
+		};
+
+		// 처음 게임에 진입하였을때 서버에 캐릭터를 등록
+		Server.prototype.register = function(){
+			this.socket.send(this.command.REGISTER + '::' + JSON.stringify({roomNo:this.roomNo}));
+		};
+
+		//캐릭터 정보의 변경사항을 서버에 반영
+		Server.prototype.update = function($data){
+			this.socket.send(this.command.UPDATE + '::' + JSON.stringify({
+				roomNo:this.roomNo,
+				userId:this.userId,
+				speedV:$data.speedV,
+				speedH:$data.speedH,
+				left:sog.sprite.p1.left + $data.speedV,
+				top:sog.sprite.p1.top + $data.speedH,
+				direction:$data.direction,
+				status:$data.status,
+				attackStatus:$data.attackStatus || 'none'
+			}));
+		};
+
+		// 서버와 접속에 문제 있을 경우 게임을 정상 종료
+		Server.prototype.exit = function($target){
+			cancelAnimationFrame(requestId);
+			requestId = null;
+			this.socket.close();
+		}
+
 		/**************** Sprite ****************/
 		// 하나의 Painter와 여러 Actor를 가지고 이들을 실행해주는 메서드들을 정의
 		Sprite = function($painter, $actors){
