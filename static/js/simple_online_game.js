@@ -27,6 +27,7 @@
 
 		// 3) Game, Server, Sprite, Painter, Actors, PainterFactory 클래스 정의
 		/**************** Sprite ****************/
+		// 하나의 Painter와 여러 Actor를 가지고 이들을 실행해주는 메서드들을 정의
 		Sprite = function($painter, $actors){
 			this.painter = $painter;
 			this.actors = $actors||{};
@@ -50,6 +51,147 @@
 		Sprite.prototype.advance = function(){
 			this.painter.advance();
 		};
+
+		/**************** Painter ****************/
+		Painter = function($image, $active){
+			this.image = $image;
+			this.active = $active;
+			this.index = 0;
+		};
+
+		/* 
+			메서드로 paint와 advance를 가진다.
+			paint는 현재 가리키는 위치정보의 이미지를 그려주는 역할
+			현재 index의 위치정보를 가지고 와 drawImage 함수로 이미지를 캔버스에 그린다.
+			
+			drawImage는 캔버스 기능으로 각 인자의 의미는 
+			[이미지 객체, 
+			 이미지 내 left 위치, 이미지 내 top 위치, left 로부터의 너비, top로 부터 높이, 
+			 현재 캐릭터의 left 위치, 현재 캐릭터의 top 위치, 캐릭터 너비, 캐릭터 높이]
+		*/
+		Painter.prototype.paint = function($sprite, $context){
+			var
+				i, r, g, b, imageData,
+				active = this.active[this.index];
+
+				$context.drawImage(
+					this.image,
+					active.left, active.top, active.width, active.height,
+					$sprite.left, $sprite.top, this.image.width, this.image.height
+					);
+
+				/* 
+					getImageData는 현재 캐릭터의 스프라이트듸 색상 정보를 취득
+					CORRECT_ 상수는 이미지가 캐릭터를 중심으로 상하좌우로
+					투명 배경이 꽤 크게 퍼져있기 때문에 정확히 캐릭터 사이즈의 색상 정보를 얻어오기 위해
+					위치정보를 보정하는 데 사용
+				 */
+				imageData = $context.getImageData(
+					$sprite.left + CORRECT_LVALUE,
+					$sprite.top + CORRECT_TVALUE,
+					this.image.width - CORRECT_LVALUE * 2,
+					this.image.height - CORRECT_LVALUE - CORRECT_TVALUE
+					);
+
+				// player2의 경우 빨간 색상의 R과 B값을 서로 바꿔 파란 색상으로 변경			
+				if($sprite === sog.sprite.p2){
+					for(i = 0; i < imageData.data.length; i += 4){
+						r = imageData.data[i],
+						g = imageData.data[i+1],
+						b = imageData.data[i+2];
+
+						if(r === 202 && g === 16 && b === 16){
+							imageData.data[i] = b;
+							imageData.data[i+2] = r;
+						}
+					}
+
+					$context.putImageData(imageData, $sprite.left + CORRECT_LVALUE, $sprite.top + CORRECT_TVALUE);
+				}
+
+				var target = $sprite === sog.sprite.p1 ? sog.sprite.p2:sog.sprite.p1;
+				// 이후 캐릭터 공격 성공 여부를 체크하여 공격이 성공한 경우 공격을 당한 캐릭터의 색상을 반투명으로 변경하여 타격감을 주었다.
+				if(target && target.data.attackStatus === 'success'){
+					for(i = 3; i < imageData.data.length; i += 4){
+						imageData.data[i] = imageData.data[i] / 2;
+					}
+
+					$context.putImageData(imageData, $sprite.left + CORRECT_LVALUE, $sprite.top + CORRECT_TVALUE);
+				}
+		};
+
+		// advance는 sprite 이미지의 다음 이미지 위치정보를 가지키도록 index를 증가시키는 기능
+		PainterFactory.prototype.advance = function(){
+			this.index++;
+
+			if(this.index > this.active.length - 1){
+				this.index = 0;
+			}
+		};
+
+
+		/*
+			Painter의 경우 각 player 별로 당시 index값이 다를 것이므로 하나의 인스턴스로 공유해서 쓸 순 없다.
+			따라서 인스턴스를 조금 더 편하게 생성하기 위해 PainterFactory를 별도로 두고,
+			이미지와 위치정보를 미리 세팅하여 상태 값에 따라
+			알맞은 Painter의 인스턴스를 반환해주도록 만든다.
+		*/
+		PainterFactory = {
+			UP:'UP',
+			DOWN:'DOWN',
+			LEFT:'LEFT',
+			RIGHT:'RIGHT',
+			ATTACK_UP:'ATTACK_UP',
+			ATTACK_DOWN:'ATTACK_DOWN',
+			ATTACK_LEFT:'ATTACK_LEFT',
+			ATTACK_RIGHT:'ATTACK_RIGHT',
+			create:function($status){
+				switch($status){
+					case this.UP:
+					return new Painter(moveUp, createActive(1024, 3));
+					break;
+
+					case this.DOWN:
+					return new Painter(moveDown, createActive(1024, 3));
+					break;
+
+					case this.LEFT:
+					return new Painter(moveLeft, createActive(1024, 8));
+					break;
+
+					case this.RIGHT:
+					return new Painter(moveRight, createActive(1024, 8));
+					break;
+
+					case this.ATTACK_UP:
+					return new Painter(attackUp, createActive(512, 6));
+					break;
+
+					case this.ATTACK_DOWN:
+					return new Painter(attackDown, createActive(512, 6));
+					break;
+
+					case this.ATTACK_LEFT:
+					return new Painter(attackLeft, createActive(512, 6));
+					break;
+
+					case this.ATTACK_RIGHT:
+					return new Painter(attackRight, createActive(512, 6));
+					break;
+				}
+			}
+		};
+
+		function createActive($interval, $length){
+			var active = [], i;
+
+			for(i = 0; i < $length; i++){
+				active.push({left:i*$interval, top:0, width:$interval, height:$interval});
+			}
+
+			return active;
+		}
+
 
 		// 4) 초기화 및 게임 시작점
 		initialize = function(){
@@ -89,18 +231,18 @@
 				}, false);
 
 			/*
-			이벤트 정의가 끝나고 필요한 이미지 리소스 들을 로딩
-			이미지 리소스 들이 전부 로딩되면 Server와 Game 객체를 만들고 게임을 시작
-			주의할 점은 이미지가 전부 로딩되고 나서 게임을 시작해야 한다는 점이다.
-			그렇지 않으면 게임이 시작되었는데 캐릭터가 안 보인다거나 배경이 안 보일 수 있다.
-			
-			소스코드는 xxx.src='';가 sog.start(); 보다 위에 있지만
-			이미지가 로딩되는 것은 비동기 처리되기 때문에 반드시 이미지 로딩보다 게임 시작이 나중에 된다는 보장이 없다.
-			
-			따라서 $util.syncOnLoad 함수로 모든 이미지가 다 로딩되고 난 후 등록된 callback 함수를 호출하여 게임을 시작하게 작성함
-			
-			이 게임 작성에 필요한 유틸리티는 index.html 에 등록한 simple_utils.js내에 들어 있고,
-			$util 객체를 통해 사용할 수 있다.
+				이벤트 정의가 끝나고 필요한 이미지 리소스 들을 로딩
+				이미지 리소스 들이 전부 로딩되면 Server와 Game 객체를 만들고 게임을 시작
+				주의할 점은 이미지가 전부 로딩되고 나서 게임을 시작해야 한다는 점이다.
+				그렇지 않으면 게임이 시작되었는데 캐릭터가 안 보인다거나 배경이 안 보일 수 있다.
+				
+				소스코드는 xxx.src='';가 sog.start(); 보다 위에 있지만
+				이미지가 로딩되는 것은 비동기 처리되기 때문에 반드시 이미지 로딩보다 게임 시작이 나중에 된다는 보장이 없다.
+				
+				따라서 $util.syncOnLoad 함수로 모든 이미지가 다 로딩되고 난 후 등록된 callback 함수를 호출하여 게임을 시작하게 작성함
+				
+				이 게임 작성에 필요한 유틸리티는 index.html 에 등록한 simple_utils.js내에 들어 있고,
+				$util 객체를 통해 사용할 수 있다.
 			*/
 			moveUp.src = 'static/img/moveUp.png';
 			moveDown.src = 'static/img/moveDown.png';
