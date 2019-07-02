@@ -23,7 +23,135 @@
 		;
 
 		// 2) 내부적으로 필요한 함수 정의 부분 : privete 한 함수 정의
-		...
+		// 각 player 별 Painter 인스턴스를 세팅한다.
+		function createPlayerPainters(){
+			var painters = {};
+
+			for(var p in sog.sprite){
+				painters[p] = {
+					UP:{
+						STAY:PainterFactory.create(PainterFactory.UP),
+						MOVE:PainterFactory.create(PainterFactory.UP),
+						ATTACK:PainterFactory.create(PainterFactory.ATTACK_UP)
+					},
+					DOWN : {
+					STAY : PainterFactory.create( PainterFactory.DOWN ),
+					MOVE : PainterFactory.create( PainterFactory.DOWN ),
+					ATTACK : PainterFactory.create( PainterFactory.ATTACK_DOWN )
+					},
+					LEFT : {
+						STAY : PainterFactory.create( PainterFactory.LEFT ),
+						MOVE : PainterFactory.create( PainterFactory.LEFT ),
+						ATTACK : PainterFactory.create( PainterFactory.ATTACK_LEFT )
+					},
+					RIGHT : {
+						STAY : PainterFactory.create( PainterFactory.RIGHT ),
+						MOVE : PainterFactory.create( PainterFactory.RIGHT ),
+						ATTACK : PainterFactory.create( PainterFactory.ATTACK_RIGHT )
+					}
+				};
+			}
+
+			return painters;
+		}
+
+		// 인자로 받은 데이터를 Sprite에 적용한다.
+		function setSpriteData($sprite, $data){
+			// 위 createPlayerPainters 함수로 만든 painters로 알맞은 Painter 객체를 뽑는다.
+			var painter = painters[$sprite === sog.sprite.p1 ? 'p1':'p2'][$data.direction][$data.status];
+
+			if($sprite.painter !== painter){
+				$sprite.painter = painter;
+			}
+
+			if($data.status === 'MOVE' || $data.status === 'ATTACK'){
+				setAllActors($sprite);
+			}else{ //STAY
+				// 상태가 STAY 일 경우, 모든 Actor를 제거하여 캐릭터가 멈추도록 한다.
+				clearAllActor($sprite);
+			}
+		}
+
+		// Sprite에 모든 Actor를 삽입한다.
+		function setAllActors($sprite){
+			for(var name in Actors){
+				if(!(name in $sprite.actors)){
+					$sprite.actors[name] = new Actors[name];
+				}
+			}
+		}
+
+		// Sprite의 모든 Actor를 제거한다.
+		function clearAllActors($sprite){
+			for(var name in Actors){
+				delete $sprite.actors[name];
+			}
+		}
+
+		// 현재 데이터로 캐릭터들의 위치 및 상태를 파악하여 벽 / 캐릭터 간 / 공격의 충돌처리를 한다.
+		function collision($data){
+			var // 내 캐릭터의 현재 위치정보
+			p1 = sog.sprite.p1,
+			p1Left = p1.left + CORRECT_LVALUE,
+			p1Right = p1Left + CHARACTER_SIZE - CORRECT_LVALUE * 2,
+			p1Top = p1.top + CORRECT_TVALUE,
+			p1Bottom = p1Top + CHARACTER_SIZE - CORRECT_LVALUE - CORRECT_TVALUE,		
+			
+			// 내 캐릭터의 다음 위치 정보
+			nextLeft = p1Left + $data.speedV,
+			nextRight = p1Right + $data.speedV,
+			nextTop = p1Top + $data.speedH,
+			nextBottom = p1Bottom + $data.speedH,
+
+			// 나의 공격 범위
+			attackLeft = p1.left,
+			attackRight = attackLeft + CHARACTER_SIZE,
+			attackTop = p1.top + CORRECT_TVALUE / 2 + 5,
+			attackBottom = attackTop + CHARACTER_SIZE - ( CORRECT_TVALUE / 2 + 5 ) * 2,
+
+			p2 = sog.sprite.p2, p2Left, p2Right, p2Top, p2Bottom;
+			
+			// 캐릭터가 벽과 충돌한 경우
+			if ( nextLeft < 0 || nextRight > sog.context.canvas.width || nextTop < 0 || nextBottom > sog.context.canvas.height ) {
+				p1.data.direction = $data.direction;
+				$util.fireEvent( document, 'keyup' );
+				return false;
+			}
+
+			if ( p2 ) {
+				// 적 Player의 현재 위치정보
+				p2Left = p2.left + CORRECT_LVALUE;
+				p2Right = p2Left + CHARACTER_SIZE - CORRECT_LVALUE * 2;
+				p2Top = p2.top + CORRECT_TVALUE;
+				p2Bottom = p2Top + CHARACTER_SIZE - CORRECT_LVALUE - CORRECT_TVALUE;
+
+				// 캐릭터끼리 겹쳐지지 않았을 때
+				if ( ! ( ( p1Left >= p2Left && p1Left <= p2Right || p1Right >= p2Left && p1Right <= p2Right ) &&
+					 	 ( p1Top >= p2Top && p1Top <= p2Bottom || p1Bottom >= p2Top && p1Bottom <= p2Bottom ) ) ) {
+					
+					// 캐릭터끼리 충돌한 경우
+					if ( ( nextLeft >= p2Left && nextLeft <= p2Right || nextRight >= p2Left && nextRight <= p2Right ) &&
+						 ( nextTop >= p2Top && nextTop <= p2Bottom || nextBottom >= p2Top && nextBottom <= p2Bottom ) ) {
+						p1.data.direction = $data.direction;
+						$util.fireEvent( document, 'keyup' );
+						return false;
+					}
+
+					// 공격이 성공한 경우
+					if ( $data.status === 'ATTACK' ) {
+						if ( ( $data.direction === 'UP' && p1Left >= p2Left && p1Left <= p2Right && p1Top >= p2Bottom && attackTop <= p2Bottom ) ||
+							 ( $data.direction === 'DOWN' && p1Right >= p2Left && p1Right <= p2Right && p1Bottom <= p2Top && attackBottom >= p2Top ) ||
+							 ( $data.direction === 'LEFT' && attackTop <= p2Top && attackBottom >= p2Bottom && p1Left >= p2Right && attackLeft <= p2Right ) ||
+							 ( $data.direction === 'RIGHT' && attackTop <= p2Top && attackBottom >= p2Bottom && p1Right <= p2Left && attackRight >= p2Left ) ) {
+								$data.attackStatus = 'success';
+						}
+					}
+				}
+			}
+
+			return true;
+
+		}
 
 		// 3) Game, Server, Sprite, Painter, Actors, PainterFactory 클래스 정의
 		
