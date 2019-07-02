@@ -358,8 +358,71 @@ class WebsocketServer(ThreadingMixIn, TCPServer):
                 print('Out client' + client['id'])
                 break
 
-    def receive_message(self, handler, message):
-        pass
+    '''
+    client에서는 [Command::JSON 형태의 문자열 파라미터] 형식으로 메시지를 전송했다.
+    
+    EX>
+    "REGISTER::{'roomNo' : 'ROOMNO01'}"
+
+    "DATA::{'roomNo' : 'ROOMNO01', 'time' : '24459.555'}"
+
+    "UPDATE::{'roomNo' : 'ROOMNO01', 'useId' : 'A1', 'speedV' : 2, 
+              'speedH' : 0, 'left' : 100, 'top' : 100, direction : 'LEFT',
+              'status' : 'MOVE', 'attackStatus' : 'none'}"
+
+    서버에서 Command에 따라 분기 처리를 하는데,
+    register일때는 새로운 유저를 데이터에 추가하고,
+    data 일 때는 현재 데이터를 유저에게 보내고,
+    update 일 때는 요청한대로 현재 데이터를 변경해주면 된다.
+    '''
+    def receive_message( self, handler, message ):
+        client = self.find_client(handler) # handler를 key로 현재 client를 가져온다.
+        oper, data = message.split('::') # 메시지 패턴에 따라 ::로 split하여 Command와 메시지 본문을 분리
+        data = json.loads(data)
+
+        if oper == 'register':
+            if len( self.all_data ) == 2: # 이미 유저 2명이 접속해 있으면 오류 메시지 반환
+                '''
+                    all_data 변수는 아래와 같은 형식이다.
+
+                    {
+                        "USER1" : {
+                            "speedV" : 0,
+                            "speedH" : 0,
+                            "left" : 0,
+                            "top" : 0,
+                            "direction" : "DOWN",
+                            "status" : "STAY",
+                            "attackStatus" : "none",
+                            "energy" : 30
+                        },
+                        "USER2" : {
+                            ...
+                        }
+                    }
+                '''
+                handler.send_message( json.dumps( { 'code' : -1, 'message' : 'Many peoples' } ) )
+                return
+            print( 'Register client : ' + str( client[ 'id' ] ) )
+            self.all_data[ client[ 'id' ] ] = { 'speedV' : 0, 'speedH' : 0, 'left' : 0, 'top' : 0, 'direction' : 'DOWN', 'status' : 'STAY', 'attackStatus' : 'none', 'energy' : 30 }
+            handler.send_message( json.dumps( { 'code' : 0, 'message' : 'success', 'data' : { 'userId' : client[ 'id' ] }, 'status' : 'register' } ) )
+        elif oper == 'data':
+            handler.send_message( json.dumps( { 'code' : 0, 'message' : 'success', 'data' : self.all_data, 'time' : data[ 'time' ], 'status' : 'data' } ) )
+        elif oper == 'update':
+            self.all_data[ client[ 'id' ] ][ 'speedV' ] = data[ 'speedV' ]
+            self.all_data[ client[ 'id' ] ][ 'speedH' ] = data[ 'speedH' ]
+            self.all_data[ client[ 'id' ] ][ 'left' ] = data[ 'left' ]
+            self.all_data[ client[ 'id' ] ][ 'top' ] = data[ 'top' ]
+            self.all_data[ client[ 'id' ] ][ 'direction' ] = data[ 'direction' ]
+            self.all_data[ client[ 'id' ] ][ 'status' ] = data[ 'status' ]
+            self.all_data[ client[ 'id' ] ][ 'attackStatus' ] = data[ 'attackStatus' ]
+
+            if data[ 'attackStatus' ] == 'success':
+                for key in self.all_data.keys():
+                    if key != client[ 'id' ]:
+                        self.all_data[ key ][ 'energy' ] = self.all_data[ key ][ 'energy' ] - 1
+	 
+            handler.send_message( json.dumps( { 'code' : 0, 'message' : 'success', 'status' : 'update' } ) )
 
 
 class WebsocketRequestHandler(BaseRequestHandler):
