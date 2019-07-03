@@ -54,6 +54,30 @@
      * send_message() : clinet에게 data를 전송하는 method
     
 ------------------------------------------------------------------------------------
+### simple_online_game.js
+  * Game  
+    canvas의 Context, Server, Sprite를 가지고 게임 진행 로직을 구현  
+  
+  * Server  
+    Server는 크게 웹 소켓 서버와 연결하고,  
+		  데이터를 주고받을 때 흐름을 정의하는 connect 메서드와  
+		  그 내부에서 상세 처리에 사용되는  
+		  data, register,update, exit 메서드가 있다.
+    
+  * Sprite  
+    하나의 Painter와 여러 Actor를 가지고 이들을 실행해주는 메서드들을 정의  
+    
+  * Painter  
+    메서드로 paint와 advance를 가진다.  
+    -> paint는 현재 가리키는 위치정보의 이미지를 그려주는 역할  
+    -> advance는 sprite 이미지의 다음 이미지 위치정보를 가지키도록 index를 증가시키는 기능   
+    
+  * PainterFactory  
+    Painter의 경우 각 player 별로 당시 index값이 다를 것이므로 하나의 인스턴스로 공유해서 쓸 순 없다.  
+		  따라서 인스턴스를 조금 더 편하게 생성하기 위해 PainterFactory를 별도로 두고,  
+		  이미지와 위치정보를 미리 세팅하여 상태 값에 따라 알맞은 Painter의 인스턴스를 반환해주도록 만든다.  
+
+------------------------------------------------------------------------------------  
 
 파이썬은 __ pycache __ 폴더에 .pyc 파일(또는 .pyo 파일)로 바이트 코드의 사본을 생성한다.  
 이것은 프로그램을 조금 더 빨리 시작하는 것뿐이다.
