@@ -22,8 +22,8 @@
 	attackRight = new Image(CHARACTER_SIZE, CHARACTER_SIZE)
 	;
 
-		// 2) 내부적으로 필요한 함수 정의 부분 : privete 한 함수 정의
-		// 각 player 별 Painter 인스턴스를 세팅한다.
+	// 2) 내부적으로 필요한 함수 정의 부분 : privete 한 함수 정의
+	// 각 player 별 Painter 인스턴스를 세팅한다.
 	function createPlayerPainters() {
 		var painters = {};
 
@@ -55,7 +55,7 @@
 		return painters;
 	}
 
-		// 인자로 받은 데이터를 Sprite에 적용한다.
+	// 인자로 받은 데이터를 Sprite에 적용한다.
 	function setSpriteData($sprite, $data){
 	// 위 createPlayerPainters 함수로 만든 painters로 알맞은 Painter 객체를 뽑는다.
 		var painter = painters[$sprite === sog.sprite.p1 ? 'p1':'p2'][$data.direction][$data.status];
@@ -150,22 +150,21 @@
 		}
 
 		return true;
-
 	}
 
 	// 3) Game, Server, Sprite, Painter, Actors, PainterFactory 클래스 정의
 	
 	/**************** Game ****************/
 	/*
-	Game은 canvas의 Context, Server, Sprite를 가지고 게임 진행 로직을 구현한다.
-	
-	dataCB, registerCB 외에
-	게임의 시작점인 start 메서드와
-	게임 진행 중 계속 반봅되는 로직인 progress 메서드를 가지고 있다.
-	
-	initialize 함수에서 Game을 만든 후 start메서드를 호출하면서 끝이 났는데,
-	start 메서드는 createPlayerPainters 함수를 호출하여 각 player의 개별 Painter를 만들고,
-	Server의 connect 메서드에  자신의 dataCB와 registerCB를 넘겨 호출한다.
+		Game은 canvas의 Context, Server, Sprite를 가지고 게임 진행 로직을 구현한다.
+		
+		dataCB, registerCB 외에
+		게임의 시작점인 start 메서드와
+		게임 진행 중 계속 반봅되는 로직인 progress 메서드를 가지고 있다.
+		
+		initialize 함수에서 Game을 만든 후 start메서드를 호출하면서 끝이 났는데,
+		start 메서드는 createPlayerPainters 함수를 호출하여 각 player의 개별 Painter를 만들고,
+		Server의 connect 메서드에  자신의 dataCB와 registerCB를 넘겨 호출한다.
 	*/
 
 	Game = function($params){
@@ -182,14 +181,14 @@
 	};
 
 	/*
-	Server로부터 data를 받아오는 기능을 하는 Server.data 메서드를 호출하기만 합니다.
-	이 progress메서드는 각 CB메서드들에서 requestAnimationFrame을 통행 빠른 속도로 계속적으로 호출될 것이다.
-	
-	이 게임은 매 프레임마다 빠르게 서버로부터 데이터를 얻어와서 화면에 반영해야 하기 때문에 
-	progress로 인해 Server.data가 호출되고,
-	그러면 서버로부터 데이터를 받으면 호출되는 callback 함수인 dataCB가 호출되고,
-	dataCB에서 받은 데이터로 화면을 그린 후
-	다시 progress를 호출하면서 로직이 반복 완성 된다.
+		Server로부터 data를 받아오는 기능을 하는 Server.data 메서드를 호출하기만 합니다.
+		이 progress메서드는 각 CB메서드들에서 requestAnimationFrame을 통행 빠른 속도로 계속적으로 호출될 것이다.
+		
+		이 게임은 매 프레임마다 빠르게 서버로부터 데이터를 얻어와서 화면에 반영해야 하기 때문에 
+		progress로 인해 Server.data가 호출되고,
+		그러면 서버로부터 데이터를 받으면 호출되는 callback 함수인 dataCB가 호출되고,
+		dataCB에서 받은 데이터로 화면을 그린 후
+		다시 progress를 호출하면서 로직이 반복 완성 된다.
 	*/
 	Game.prototype.progress = function($time){
 		this.server.data($time);
@@ -424,7 +423,7 @@
 
 			$context.putImageData(imageData, $sprite.left + CORRECT_LVALUE, $sprite.top + CORRECT_TVALUE);
 		}
-  };
+	};
 
 	// advance는 sprite 이미지의 다음 이미지 위치정보를 가지키도록 index를 증가시키는 기능
 	Painter.prototype.advance = function(){
@@ -459,7 +458,7 @@
 			move : move,
 			next : next
 		};
-	})();
+	}) ();
   
 	/*
 		Painter의 경우 각 player 별로 당시 index값이 다를 것이므로 하나의 인스턴스로 공유해서 쓸 순 없다.
